@@ -32,19 +32,16 @@ test('the 28-person group hall loads, remains clickable, and supports search', a
     images.map((image) => image.getAttribute('src')),
   )
   expect(new Set(assets).size).toBe(28)
+  expect(assets.every((asset) => asset?.endsWith('.webp'))).toBe(true)
   expect(await portraits.allTextContents()).toEqual(Array<string>(28).fill(''))
-  for (const asset of assets) {
-    if (!asset?.endsWith('.svg')) continue
-    const response = await page.request.get(asset)
-    expect(response.ok()).toBe(true)
-    expect(await response.text()).not.toMatch(/<text\b/)
-  }
 
   const profile = page.locator('#member-profile')
   for (const portrait of await portraits.all()) {
     const memberId = await portrait.getAttribute('data-member-id')
     await selectPortrait(page, portrait, isMobile)
-    await expect(profile.locator('.profile-avatar img')).toHaveAttribute('src', new RegExp(`${memberId}\\.(webp|svg)$`))
+    const avatar = profile.locator('.profile-avatar img')
+    await expect(avatar).toHaveAttribute('src', `/assets/profiles/${memberId}.webp`)
+    await expect.poll(() => avatar.evaluate((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0)).toBe(true)
     await expect(profile.locator('#profile-name')).not.toHaveText('')
     await profile.getByRole('button', { name: '关闭个人名片' }).click()
     await expect(profile).toHaveCount(0)
@@ -89,6 +86,40 @@ test('switches portraits without closing the current profile', async ({ page, is
     await selectPortrait(page, portrait, isMobile)
     await expect(profile.locator('.profile-index')).toHaveText(`/ ${id}`)
   }
+})
+
+test('opens the sample light cone next to its profile and flips the card', async ({ page, isMobile }) => {
+  await page.goto('/?member=018')
+  const profile = page.locator('#member-profile')
+  const lightCone = page.getByRole('region', { name: '光锥 LIGHT CONE' })
+  await expect(profile.getByRole('heading', { name: '分享鲍' })).toBeVisible()
+  await expect(lightCone).toBeVisible()
+
+  const profileBox = (await profile.boundingBox())!
+  const cardBox = (await lightCone.boundingBox())!
+  if (isMobile) {
+    expect(profileBox.y + profileBox.height).toBeLessThan(cardBox.y)
+  } else {
+    expect(cardBox.x + cardBox.width).toBeLessThan(profileBox.x)
+    expect(Math.abs(cardBox.height - profileBox.height)).toBeLessThan(2)
+  }
+
+  const viewer = lightCone.frameLocator('iframe')
+  const front = viewer.getByRole('button', { name: '正面' })
+  const back = viewer.getByRole('button', { name: '背面' })
+  await expect(front).toBeEnabled()
+  await expect.poll(() => viewer.locator('html').evaluate((html) => ({
+    horizontal: html.scrollWidth - innerWidth,
+    vertical: html.scrollHeight - innerHeight,
+  }))).toEqual({ horizontal: 0, vertical: 0 })
+  if (isMobile) await back.tap()
+  else await back.click()
+  await expect(back).toHaveAttribute('aria-pressed', 'true')
+  await front.click()
+  await expect(front).toHaveAttribute('aria-pressed', 'true')
+  await front.press('Escape')
+  await expect(profile).toHaveCount(0)
+  await expect(page).not.toHaveURL(/member=018/)
 })
 
 test('closing a profile opened by a legacy link clears the member on reload', async ({ page }) => {

@@ -1,0 +1,40 @@
+{
+  "title": "长夜月",
+  "subtitle": "分享鲍",
+  "edition": "NO. 018",
+  "collection": "LIGHT CONE / VOL. 06",
+  "description": "第六组群像纪念册 · 分享鲍的光锥",
+  "sourceMode": "reference",
+  "artworkFit": [
+    1,
+    1
+  ],
+  "safeArea": {
+    "scale": 1,
+    "offset": [
+      0,
+      0
+    ]
+  },
+  "parameters": {
+    "subjectScale": 1,
+    "subjectDepth": 0.24,
+    "backgroundDepth": -0.14,
+    "effectsScale": 1,
+    "effectsDepth": 0.48,
+    "foil": 0.29
+  },
+  "appearance": {
+    "finish": "gold",
+    "background": "#f3e4eb"
+  },
+  "assets": {
+    "subject": "./assets/subject.webp",
+    "background": "./assets/background.png",
+    "text": "./assets/text.png",
+    "lineart": "./assets/lineart.png",
+    "effects": "./assets/effects.png",
+    "model": "./assets/card.glb",
+    "back": "./assets/back.webp"
+  }
+}
