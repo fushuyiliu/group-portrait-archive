@@ -36,8 +36,28 @@ function portraitStyle(member: Member) {
   } as CSSProperties
 }
 
+function findLinkedMember(value: string | null) {
+  const target = value?.normalize('NFKC').trim()
+  if (!target) return
+  const number = /^\d+$/.test(target) ? target.padStart(3, '0') : target
+  return members.find((member) => member.memberNumber === number || member.nickname === target)
+}
+
+function findLegacyLinkedMember(hash: string) {
+  return /^#\d+$/.test(hash) ? findLinkedMember(hash.slice(1)) : undefined
+}
+
+function syncMemberLink(memberNumber?: string) {
+  const url = new URL(window.location.href)
+  if (memberNumber) url.searchParams.set('member', memberNumber)
+  else url.searchParams.delete('member')
+  if (findLegacyLinkedMember(url.hash)) url.hash = ''
+  if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url)
+}
+
 function Profile({ member, onClose }: { member: Member; onClose: () => void }) {
   const details = member.profile
+  const memories = details ? details.memory.split(/[，,、]\s*/).filter(Boolean) : []
   return (
     <aside
       id="member-profile"
@@ -54,25 +74,31 @@ function Profile({ member, onClose }: { member: Member; onClose: () => void }) {
       <div className="profile-identity">
         <div className="profile-avatar"><img src={member.avatar} alt={`${member.nickname}的头像`} /></div>
         <div>
-          <span className="profile-test micro">虚构测试人物</span>
+          <span className="profile-test micro">第六组伙伴</span>
           <h2 id="profile-name">{member.nickname}</h2>
-          {details && <p>{details.introduction}</p>}
+          {details && <p>{details.memory}</p>}
         </div>
       </div>
       {details && (
         <>
-          <section className="profile-section">
-            <h3>个人简介</h3>
-            <p>{details.bio}</p>
-          </section>
-          <section className="profile-section">
-            <h3>兴趣爱好</h3>
-            <ul className="profile-chips">{details.interests.map((interest) => <li key={interest}>{interest}</li>)}</ul>
-          </section>
-          <section className="profile-section">
-            <h3>个人关键词</h3>
-            <ul className="profile-chips keywords">{details.tags.map((tag) => <li key={tag}># {tag}</li>)}</ul>
-          </section>
+          {details.trait && (
+            <section className="profile-section">
+              <h3>个人特质</h3>
+              <p>{details.trait}</p>
+            </section>
+          )}
+          {details.value && (
+            <section className="profile-section">
+              <h3>团队价值</h3>
+              <p>{details.value}</p>
+            </section>
+          )}
+          {memories.length > 0 && (
+            <section className="profile-section">
+              <h3>别人记住我</h3>
+              <ul className="profile-chips keywords">{memories.map((tag) => <li key={tag}># {tag}</li>)}</ul>
+            </section>
+          )}
         </>
       )}
       <div className="card-reserve">
@@ -89,6 +115,7 @@ export default function PortraitHall() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const deepLinkDone = useRef(false)
   const selected = members.find((member) => member.memberId === selectedId)
   const term = query.normalize('NFKC').trim().toLowerCase().replace(/^#\s*/, '')
   const matches = term ? members.filter(({ memberNumber, nickname }) =>
@@ -98,6 +125,7 @@ export default function PortraitHall() {
 
   function clearSelection() {
     setSelectedId(null)
+    syncMemberLink()
   }
 
   function reset() {
@@ -113,8 +141,11 @@ export default function PortraitHall() {
   }
 
   function selectMember(memberId: string, fromSearch = false) {
+    const member = members.find((entry) => entry.memberId === memberId)
+    if (!member) return
     setSelectedId(memberId)
     setShowResults(false)
+    syncMemberLink(member.memberNumber)
     const stage = stageRef.current
     const portrait = stage?.querySelector<HTMLButtonElement>(`[data-member-id="${memberId}"]`)
     if (fromSearch) {
@@ -165,6 +196,15 @@ export default function PortraitHall() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [selectedId, showResults, term])
 
+  // Old numeric fragments open a profile and are converted to the shareable query URL.
+  useEffect(() => {
+    if (deepLinkDone.current) return
+    deepLinkDone.current = true
+    const url = new URL(window.location.href)
+    const found = findLinkedMember(url.searchParams.get('member')) ?? findLegacyLinkedMember(url.hash)
+    if (found) selectMember(found.memberId, true)
+  }, [])
+
   return (
     <>
       <header className="site-header">
@@ -173,7 +213,7 @@ export default function PortraitHall() {
             <img src="/archive-mark.svg" alt="" width="38" height="38" />
             <div><strong>群像纪念册</strong><span className="micro">GROUP PORTRAIT ARCHIVE</span></div>
           </div>
-          <span className="edition micro"><span /> 阶段一原型 <b>01</b></span>
+          <span className="edition micro"><span /> 第六组群像 <b>06</b></span>
         </div>
       </header>
 
@@ -214,7 +254,7 @@ export default function PortraitHall() {
             {showResults && term && (
               <div className="search-results">
                 <p className="results-caption" role="status">
-                  {matches.length ? `找到 ${matches.length} 位测试人物` : '没有找到人物，试试「001」或「小满」。'}
+                  {matches.length ? `找到 ${matches.length} 位伙伴` : '没有找到人物，试试「001」或「稳稳子」。'}
                 </p>
                 {matches.length > 0 && (
                   <ul>
@@ -258,7 +298,6 @@ export default function PortraitHall() {
                   aria-controls={active ? 'member-profile' : undefined}
                   onClick={() => selectMember(member.memberId)}
                 >
-                  <span className="portrait-shadow" />
                   <img src={member.avatar} alt="" draggable={false} />
                 </button>
               )
@@ -272,8 +311,8 @@ export default function PortraitHall() {
           <button type="button" onClick={reset} disabled={!selected && !query}><Icon name="reset" /> 返回全体</button>
         </div>
         <footer className="site-footer">
-          <span className="micro">GROUP PORTRAIT ARCHIVE <span>©</span> VOL. 01</span>
-          <span>人物形象与资料均为虚构测试素材</span>
+          <span className="micro">GROUP PORTRAIT ARCHIVE <span>©</span> VOL. 06</span>
+          <span>北辰青年线上实习 · 第六组群像纪念册</span>
         </footer>
       </main>
     </>
