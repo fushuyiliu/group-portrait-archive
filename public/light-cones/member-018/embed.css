@@ -1,0 +1,72 @@
+:root {
+  --ink: #523449;
+  --muted: #725168;
+  --focus: #7c436b;
+  background: #f3e4eb;
+}
+html, body {
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+main {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 56px;
+  background:
+    radial-gradient(ellipse at 50% 86%, #9f597b3b, transparent 52%),
+    radial-gradient(ellipse at 38% 28%, #fff9ed 2%, transparent 66%),
+    linear-gradient(145deg, #f6e6ed, #f0dce9 75%, #ede3f2);
+}
+.masthead, .parameter-panel, .artwork-title, .finish-cluster, .footer {
+  display: none;
+}
+.gallery {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+.stage {
+  inset: 0 0 21px;
+  overflow: hidden;
+}
+.stage-note {
+  display: flex;
+  inset: auto 17px 2px;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #714e65;
+}
+.stage-note > span:first-child {
+  display: inline;
+  letter-spacing: .08em;
+}
+.artwork-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-items: center;
+  min-height: 0;
+  margin: 0;
+  padding: 0 10px;
+  border-color: #c386a348;
+  background: #fff6ef70;
+}
+.face-picker {
+  background: #d6acc64d;
+  border-radius: 999px;
+}
+.face-picker button {
+  height: 40px;
+  min-width: 74px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.face-picker button[aria-pressed="true"] {
+  background: #fff9f2;
+}
+.fallback3d {
+  padding: 13px 30px;
+}
+.flipper3d { width: auto; height: 100%; }
+.layer3d img, .back3d { border-radius: 9px; }

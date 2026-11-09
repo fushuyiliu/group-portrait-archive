@@ -40,7 +40,9 @@ Linux 若缺少 Chromium 系统依赖，可使用 `npx playwright install --with
 | --- | --- |
 | `data/members.ts` | 28 位成员的编号、化名、图片地址和资料（个人特质 / 团队价值 / 记忆点） |
 | `data/portrait-layout.ts` | 桌面与手机各排的槽位顺序、横向范围和卡片中心位置 |
-| `public/assets/members/` | 28 张成员形象：真实画像为 webp，暂缺画像的使用统一风格占位 SVG |
+| `public/assets/members/` | 28 张合影用 WebP 画像 |
+| `public/assets/profiles/` | 资料面板使用的方形 WebP 头像，文件名与合影画像对应 |
+| `public/light-cones/member-018/` | 分享鲍的可旋转光锥样卡，通过 `/?member=018` 查看 |
 | `public/assets/backgrounds/` | 大厅使用的原创背景 |
 | `components/portrait-hall.tsx` | 合影、搜索和资料名片 |
 | `app/globals.css` | 桌面侧栏、移动底部面板、层级和动效 |
@@ -59,5 +61,6 @@ Linux 若缺少 Chromium 系统依赖，可使用 `npx playwright install --with
 ## 后续补充画像
 
 1. 确认画像可公开后，把展示图裁成约 3:4 的竖幅，存为 `public/assets/members/member-0NN.webp`。
-2. 更新 `data/members.ts` 中对应成员的 `avatar` 路径。
-3. 本地 `npm run dev` 确认形象、搜索和资料名片正常后，按协作指南提交。
+2. 单独裁出保留完整头部的方形头像，存为 `public/assets/profiles/member-0NN.webp`。
+3. 更新 `data/members.ts` 中对应成员的 `avatar` 路径。
+4. 本地 `npm run dev` 确认形象、搜索和资料名片正常后，按协作指南提交。

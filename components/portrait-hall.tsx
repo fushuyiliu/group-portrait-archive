@@ -63,49 +63,73 @@ function Profile({ member, onClose }: { member: Member; onClose: () => void }) {
       id="member-profile"
       className="profile"
       aria-labelledby="profile-name"
-      style={{ '--accent': member.accent } as CSSProperties}
     >
       <div className="profile-top">
-        <span className="micro"><Icon name="frame" /> 人物档案 <span className="profile-index">/ {member.memberNumber}</span></span>
+        <span className="profile-masthead"><Icon name="star" /> MY PROFILE <Icon name="star" /></span>
         <button className="icon-button" type="button" aria-label="关闭个人名片" onClick={onClose}>
           <Icon name="close" />
         </button>
       </div>
       <div className="profile-identity">
-        <div className="profile-avatar"><img src={member.avatar} alt={`${member.nickname}的头像`} /></div>
         <div>
-          <span className="profile-test micro">第六组伙伴</span>
+          <span className="profile-kicker micro">人物档案 <span className="profile-index">/ {member.memberNumber}</span></span>
           <h2 id="profile-name">{member.nickname}</h2>
-          {details && <p>{details.memory}</p>}
+          <p className="profile-group">北辰青年 · 第六组</p>
+        </div>
+        <div className="profile-avatar" style={{ '--accent': member.accent } as CSSProperties}>
+          <img src={member.profileAvatar} alt={`${member.nickname}的头像`} />
         </div>
       </div>
       {details && (
-        <>
+        <div className="profile-details">
           {details.trait && (
             <section className="profile-section">
-              <h3>个人特质</h3>
+              <h3><Icon name="star" /> 个人特质</h3>
               <p>{details.trait}</p>
             </section>
           )}
           {details.value && (
             <section className="profile-section">
-              <h3>团队价值</h3>
+              <h3><Icon name="star" /> 团队价值</h3>
               <p>{details.value}</p>
             </section>
           )}
           {memories.length > 0 && (
-            <section className="profile-section">
-              <h3>别人记住我</h3>
-              <ul className="profile-chips keywords">{memories.map((tag) => <li key={tag}># {tag}</li>)}</ul>
+            <section className="profile-section profile-memory">
+              <h3><Icon name="star" /> 别人记住我</h3>
+              <ul className="profile-chips">{memories.map((tag, index) => <li key={index}>{tag}</li>)}</ul>
             </section>
           )}
-        </>
+        </div>
       )}
-      <div className="card-reserve">
-        <span className="card-icon"><Icon name="star" /></span>
-        <div><strong>特色卡片</strong><small>3D 全息卡片预留位</small></div>
-      </div>
+      {!member.lightCone && <p className="profile-light-cone"><Icon name="star" /> 光锥 · 待收录</p>}
     </aside>
+  )
+}
+
+function MemberDossier({ member, onClose }: { member: Member; onClose: () => void }) {
+  return (
+    <div id="member-dossier" className={member.lightCone ? 'dossier dossier-paired' : 'dossier'}>
+      {member.lightCone && (
+        <section className="light-cone" aria-labelledby="light-cone-title">
+          <div className="light-cone-heading">
+            <h2 id="light-cone-title"><Icon name="star" /> 光锥 <span>LIGHT CONE</span></h2>
+            <span className="micro">NO. {member.memberNumber}</span>
+          </div>
+          <iframe
+            className="light-cone-viewer"
+            src={member.lightCone.viewer}
+            title={`${member.nickname}的光锥 · ${member.lightCone.title}`}
+            onLoad={(event) => {
+              event.currentTarget.contentDocument?.addEventListener('keydown', (key) => {
+                if (key.key === 'Escape') onClose()
+              })
+            }}
+          />
+        </section>
+      )}
+      <Profile member={member} onClose={onClose} />
+    </div>
   )
 }
 
@@ -138,6 +162,7 @@ export default function PortraitHall() {
     const activePortrait = stageRef.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')
     clearSelection()
     activePortrait?.focus({ preventScroll: true })
+    if (selected?.lightCone) stageRef.current?.scrollIntoView({ block: 'start' })
   }
 
   function selectMember(memberId: string, fromSearch = false) {
@@ -153,12 +178,14 @@ export default function PortraitHall() {
       portrait?.focus({ preventScroll: true })
     }
     const compact = window.matchMedia('(max-width: 900px)').matches
-    if (stage && portrait && (compact || fromSearch)) {
+    if (stage && portrait && (member.lightCone || compact || fromSearch)) {
       // Wait for the profile and its mobile scroll space to enter the layout.
       requestAnimationFrame(() => {
         if (portrait.getAttribute('aria-pressed') !== 'true') return
         const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
-        if (compact) {
+        if (member.lightCone) {
+          document.getElementById('member-dossier')?.scrollIntoView({ block: 'start', behavior })
+        } else if (compact) {
           const profile = document.getElementById('member-profile')
           const stageTop = stage.getBoundingClientRect().top
           const figure = portrait.getBoundingClientRect()
@@ -217,7 +244,7 @@ export default function PortraitHall() {
         </div>
       </header>
 
-      <main className={selected ? 'hall has-selection' : 'hall'}>
+      <main className={`hall${selected ? ' has-selection' : ''}${selected?.lightCone ? ' has-light-cone' : ''}`}>
         <div className="intro">
           <div>
             <div className="chapter micro"><Icon name="star" /> VOL. 01 <span /> THE GROUP PORTRAIT</div>
@@ -303,7 +330,7 @@ export default function PortraitHall() {
               )
             })}
           </div>
-          {selected && <Profile key={selected.memberId} member={selected} onClose={closeProfile} />}
+          {selected && <MemberDossier key={selected.memberId} member={selected} onClose={closeProfile} />}
         </section>
 
         <div className="stage-toolbar">
