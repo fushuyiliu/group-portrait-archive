@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { CSSProperties, FormEvent, ReactNode } from 'react'
 import { members } from '../data/members'
 import type { Member } from '../data/members'
+import { LightConeImage, LightConeImport } from './light-cone-image'
 
 const icons = {
   search: 'M10.5 16a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 4 4',
@@ -55,7 +56,7 @@ function syncMemberLink(memberNumber?: string) {
   if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url)
 }
 
-function Profile({ member, onClose }: { member: Member; onClose: () => void }) {
+function Profile({ member, onClose, children }: { member: Member; onClose: () => void; children: ReactNode }) {
   const details = member.profile
   const memories = details ? details.memory.split(/[，,、]\s*/).filter(Boolean) : []
   return (
@@ -75,6 +76,7 @@ function Profile({ member, onClose }: { member: Member; onClose: () => void }) {
           <span className="profile-kicker micro">人物档案 <span className="profile-index">/ {member.memberNumber}</span></span>
           <h2 id="profile-name">{member.nickname}</h2>
           <p className="profile-group">北辰青年 · 第六组</p>
+          {children}
         </div>
         <div className="profile-avatar" style={{ '--accent': member.accent } as CSSProperties}>
           <img src={member.profileAvatar} alt={`${member.nickname}的头像`} />
@@ -102,45 +104,64 @@ function Profile({ member, onClose }: { member: Member; onClose: () => void }) {
           )}
         </div>
       )}
-      {!member.lightCone && <p className="profile-light-cone"><Icon name="star" /> 光锥 · 待收录</p>}
     </aside>
   )
 }
 
-function MemberDossier({ member, onClose }: { member: Member; onClose: () => void }) {
+function MemberDossier({ member, onClose, image, preview, onImport, onDiscard }: {
+  member: Member
+  onClose: () => void
+  image?: string
+  preview?: string
+  onImport: (image: string) => void
+  onDiscard: () => void
+}) {
+  const dossier = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (preview) dossier.current?.scrollIntoView({ block: 'start' })
+  }, [preview])
+
   return (
-    <div id="member-dossier" className={member.lightCone ? 'dossier dossier-paired' : 'dossier'}>
-      {member.lightCone && (
+    <div id="member-dossier" ref={dossier} className={image || member.lightCone ? 'dossier dossier-paired' : 'dossier'}>
+      {(image || member.lightCone) && (
         <section className="light-cone" aria-labelledby="light-cone-title">
           <div className="light-cone-heading">
             <h2 id="light-cone-title"><Icon name="star" /> 光锥 <span>LIGHT CONE</span></h2>
             <span className="micro">NO. {member.memberNumber}</span>
           </div>
-          <iframe
-            className="light-cone-viewer"
-            src={member.lightCone.viewer}
-            title={`${member.nickname}的光锥 · ${member.lightCone.title}`}
-            onLoad={(event) => {
-              event.currentTarget.contentDocument?.addEventListener('keydown', (key) => {
-                if (key.key === 'Escape') onClose()
-              })
-            }}
-          />
+          {image ? <LightConeImage key={image} src={image} name={member.nickname} number={member.memberNumber} /> : member.lightCone && (
+            <iframe
+              className="light-cone-viewer"
+              src={member.lightCone.viewer}
+              title={`${member.nickname}的光锥 · ${member.lightCone.title}`}
+              onLoad={(event) => {
+                event.currentTarget.contentDocument?.addEventListener('keydown', (key) => {
+                  if (key.key === 'Escape') onClose()
+                })
+              }}
+            />
+          )}
         </section>
       )}
-      <Profile member={member} onClose={onClose} />
+      <Profile member={member} onClose={onClose}>
+        <LightConeImport memberId={member.memberId} preview={preview} onImport={onImport} onDiscard={onDiscard} />
+      </Profile>
     </div>
   )
 }
 
-export default function PortraitHall() {
+export default function PortraitHall({ publishedLightCones }: { publishedLightCones: Record<string, string> }) {
   const [query, setQuery] = useState('')
   const [showResults, setShowResults] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [previews, setPreviews] = useState<Partial<Record<string, string>>>({})
   const searchRef = useRef<HTMLInputElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const deepLinkDone = useRef(false)
   const selected = members.find((member) => member.memberId === selectedId)
+  const selectedPreview = selectedId ? previews[selectedId] : undefined
+  const selectedImage = selectedPreview ?? (selectedId ? publishedLightCones[selectedId] : undefined)
+  const hasLightCone = Boolean(selectedImage || selected?.lightCone)
   const term = query.normalize('NFKC').trim().toLowerCase().replace(/^#\s*/, '')
   const matches = term ? members.filter(({ memberNumber, nickname }) =>
     memberNumber.includes(term) || nickname.toLowerCase().includes(term) ||
@@ -162,7 +183,20 @@ export default function PortraitHall() {
     const activePortrait = stageRef.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')
     clearSelection()
     activePortrait?.focus({ preventScroll: true })
-    if (selected?.lightCone) stageRef.current?.scrollIntoView({ block: 'start' })
+    if (hasLightCone) stageRef.current?.scrollIntoView({ block: 'start' })
+  }
+
+  function importLightCone(memberId: string, image: string) {
+    setPreviews((current) => ({ ...current, [memberId]: image }))
+  }
+
+  function discardLightCone(memberId: string) {
+    setPreviews((current) => {
+      const next = { ...current }
+      delete next[memberId]
+      return next
+    })
+    if (!selected?.lightCone && !publishedLightCones[memberId]) stageRef.current?.scrollIntoView({ block: 'start' })
   }
 
   function selectMember(memberId: string, fromSearch = false) {
@@ -178,12 +212,13 @@ export default function PortraitHall() {
       portrait?.focus({ preventScroll: true })
     }
     const compact = window.matchMedia('(max-width: 900px)').matches
-    if (stage && portrait && (member.lightCone || compact || fromSearch)) {
+    const paired = member.lightCone || previews[memberId] || publishedLightCones[memberId]
+    if (stage && portrait && (paired || compact || fromSearch)) {
       // Wait for the profile and its mobile scroll space to enter the layout.
       requestAnimationFrame(() => {
         if (portrait.getAttribute('aria-pressed') !== 'true') return
         const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
-        if (member.lightCone) {
+        if (paired) {
           document.getElementById('member-dossier')?.scrollIntoView({ block: 'start', behavior })
         } else if (compact) {
           const profile = document.getElementById('member-profile')
@@ -244,7 +279,7 @@ export default function PortraitHall() {
         </div>
       </header>
 
-      <main className={`hall${selected ? ' has-selection' : ''}${selected?.lightCone ? ' has-light-cone' : ''}`}>
+      <main className={`hall${selected ? ' has-selection' : ''}${hasLightCone ? ' has-light-cone' : ''}`}>
         <div className="intro">
           <div>
             <div className="chapter micro"><Icon name="star" /> VOL. 01 <span /> THE GROUP PORTRAIT</div>
@@ -330,7 +365,12 @@ export default function PortraitHall() {
               )
             })}
           </div>
-          {selected && <MemberDossier key={selected.memberId} member={selected} onClose={closeProfile} />}
+          {selected && (
+            <MemberDossier key={selected.memberId} member={selected} onClose={closeProfile}
+              image={selectedImage} preview={selectedPreview}
+              onImport={(image) => importLightCone(selected.memberId, image)}
+              onDiscard={() => discardLightCone(selected.memberId)} />
+          )}
         </section>
 
         <div className="stage-toolbar">

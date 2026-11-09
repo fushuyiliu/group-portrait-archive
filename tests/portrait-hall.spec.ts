@@ -122,6 +122,41 @@ test('opens the sample light cone next to its profile and flips the card', async
   await expect(page).not.toHaveURL(/member=018/)
 })
 
+test('previews a contributed light cone for the selected member and exports its submission name', async ({ page }) => {
+  await page.goto('/?member=027')
+  const profile = page.locator('#member-profile')
+  await expect(profile.getByRole('button', { name: '导入光锥图片' })).toBeVisible()
+  const input = profile.locator('input[type=file]')
+  await input.setInputFiles({ name: 'bad.png', mimeType: 'image/png', buffer: Buffer.from('broken') })
+  await expect(profile.getByRole('alert')).toContainText('请选择 PNG、JPG 或 WebP')
+
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 120
+    canvas.height = 180
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#ab6297'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL().split(',')[1]
+  })
+  await input.setInputFiles({ name: 'test-cone.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') })
+
+  const cone = page.getByRole('region', { name: '光锥 LIGHT CONE' })
+  const art = cone.getByRole('img')
+  await expect(art).toHaveAttribute('src', /^data:image\/webp;/)
+  await expect.poll(() => art.evaluate((image) => image instanceof HTMLImageElement && image.naturalWidth)).toBe(120)
+  await expect(profile.getByRole('link', { name: '下载投稿图片' })).toHaveAttribute('download', 'member-027.webp')
+  await cone.getByRole('button', { name: '背面' }).click()
+  await expect(cone.getByRole('button', { name: '背面' })).toHaveAttribute('aria-pressed', 'true')
+  await cone.getByRole('button', { name: '正面' }).click()
+  await expect(art).toBeVisible()
+  await input.setInputFiles({ name: 'replacement.png', mimeType: 'image/png', buffer: Buffer.from('broken') })
+  await expect(profile.getByRole('alert')).toBeVisible()
+  await expect(art).toHaveAttribute('src', /^data:image\/webp;/)
+  await profile.getByRole('button', { name: '撤销预览' }).click()
+  await expect(profile.getByRole('link', { name: '下载投稿图片' })).toHaveCount(0)
+})
+
 test('closing a profile opened by a legacy link clears the member on reload', async ({ page }) => {
   const portrait = page.locator('[data-member-id="member-014"]')
   await page.goto('/?from=test#014')

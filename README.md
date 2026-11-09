@@ -42,12 +42,20 @@ Linux 若缺少 Chromium 系统依赖，可使用 `npx playwright install --with
 | `data/portrait-layout.ts` | 桌面与手机各排的槽位顺序、横向范围和卡片中心位置 |
 | `public/assets/members/` | 28 张合影用 WebP 画像 |
 | `public/assets/profiles/` | 资料面板使用的方形 WebP 头像，文件名与合影画像对应 |
-| `public/light-cones/member-018/` | 分享鲍的可旋转光锥样卡，通过 `/?member=018` 查看 |
+| `public/light-cones/` | 已审核的光锥图片和分享鲍的可旋转样卡 |
 | `public/assets/backgrounds/` | 大厅使用的原创背景 |
 | `components/portrait-hall.tsx` | 合影、搜索和资料名片 |
 | `app/globals.css` | 桌面侧栏、移动底部面板、层级和动效 |
 
 两个布局按行生成 `position` 和 `mobilePosition`。坐标用舞台宽高的百分比表示，锚定在卡片中心，`scale` 决定大小（前排更大），`layer` 决定初始图层。交互通过稳定的 `memberId` 关联。查找示例为 `001`（稳稳子）、`028`（冒泡喜）。
+
+## 投稿光锥图片
+
+1. 打开对应成员的档案，点击「导入光锥图片」。支持 10 MB 以内的 PNG、JPG 和 WebP。导入后可在光锥区拖动、翻面和检查裁切，预览只在当前页面有效。
+2. 确认图片可公开后，点击「下载投稿图片」。文件会按成员编号命名，例如 `member-028.webp`。
+3. 在自己的 GitHub Fork 中，将下载的文件上传到 `public/light-cones/`，再向本项目提交 PR。维护者可以用同一入口处理成员发来的图片。审核合并并运行新版本后，打开对应档案即可看到光锥。
+
+为同一成员更新光锥时，沿用相同文件名。018「分享鲍」已有「长夜月」样卡，可从 `/?member=018` 打开。
 
 ## 自测与截图
 
